@@ -34,20 +34,25 @@ jobs:
       - name: Run tests
         continue-on-error: true
         run: cargo test --features="serde-error,bwk" --verbose
-      - name: Collect generated schema (scratch)
-        run: |
-          mkdir -p /tmp/gen
-          find target -name 'biscuit.format.schema.rs' -exec cp {} /tmp/gen/ \;
-          ls -la /tmp/gen
-      - uses: actions/upload-artifact@v4
-        with:
-          name: generated-schema
-          path: /tmp/gen
       - name: Check samples
+        continue-on-error: true
         run: |
           cd biscuit-auth
           cargo run --release --example testcases --features serde-error -- ./samples --json > ./samples/samples.json
           git diff --exit-code
+      - name: Collect generated files (scratch)
+        if: always()
+        run: |
+          mkdir -p /tmp/gen
+          find target -name 'biscuit.format.schema.rs' -exec cp {} /tmp/gen/ \;
+          git add -A biscuit-auth/samples
+          git diff --cached --binary > /tmp/gen/samples.patch
+          ls -la /tmp/gen
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-files
+          path: /tmp/gen
 
   capi:
     runs-on: ubuntu-latest
